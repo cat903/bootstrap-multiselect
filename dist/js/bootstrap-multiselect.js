@@ -601,35 +601,34 @@
          * Uses createDivider and createOptionValue to create the necessary options.
          */
         buildDropdownOptions: function () {
-
+            var listOptions = [];
             this.$select.children().each($.proxy(function (index, element) {
 
                 var $element = $(element);
                 // Support optgroups and options without a group simultaneously.
-                var tag = $element.prop('tagName')
-                    .toLowerCase();
+                var tag = element.tagName;
 
-                if ($element.prop('value') === this.options.selectAllValue) {
+                if (element.value === this.options.selectAllValue) {
                     return;
                 }
 
-                if (tag === 'optgroup') {
-                    this.createOptgroup(element);
+                if (tag === 'OPTGROUP') {
+                    listOptions.push.apply(listOptions, this.createOptgroup(element));
                 }
-                else if (tag === 'option') {
+                else if (tag === 'OPTION') {
 
-                    if ($element.data('role') === 'divider') {
-                        this.createDivider();
-                    }
-                    else {
-                        this.createOptionValue(element, false);
-                    }
+                    // if ($element.data('role') === 'divider') {
+                    //     this.createDivider();
+                    // }
+                    // else {
+                    //     this.createOptionValue(element, false);
+                    // }
 
                 }
 
                 // Other illegal tags will be ignored.
             }, this));
-
+            this.$ul[0].innerHTML += listOptions.join('');
             // Bind the change event on the dropdown elements.
             $(this.$popupContainer).off('change', '> *:not(.multiselect-group) input[type="checkbox"], > *:not(.multiselect-group) input[type="radio"]');
             $(this.$popupContainer).on('change', '> *:not(.multiselect-group) input[type="checkbox"], > *:not(.multiselect-group) input[type="radio"]', $.proxy(function (event) {
@@ -980,6 +979,42 @@
          *
          * @param {jQuery} element
          */
+       createOptionValueString: function(element) {
+            var value = this.escapeHtml(element.value);
+            var title = this.escapeHtml(element.text);
+            var selected = element.selected;
+            var inputType = this.options.multiple ? "checkbox" : "radio";
+
+            var checkbox = '<input type="' + inputType + '" value="' + value + (selected ? '" checked>' : '">');
+            var label = '<label class="' + inputType + '" title="' + title + '">' + checkbox + " " + title + "</label>";
+
+            var liClass = (selected && this.options.selectedClass ? ' class="' + this.options.selectedClass + '"' : '');
+            var li = '<li' + liClass + '><a tabindex="0">' + label + '</a></li>';
+
+            // TODO: Implement: element.disabled check
+
+            return li;
+        },
+
+        /**
+         * Escapes a string for use in HTML
+         *
+         * @param {String} value
+         * @returns {String}
+         */
+        escapeHtml: function(s) {
+            var ESC_MAP = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+                };
+
+            return s.replace(/[&<>'"]/g, function(c) {
+                return ESC_MAP[c];
+            });
+        },
         createOptionValue: function (element, isGroupOption) {
             var $element = $(element);
             if ($element.is(':selected')) {
@@ -1094,8 +1129,9 @@
             this.$popupContainer.append($groupOption);
 
             $("option", group).each($.proxy(function ($, group) {
-                this.createOptionValue(group, true);
+                optGroupOptions.push(this.createOptionValueString(group));
             }, this));
+            return optGroupOptions;
         },
 
         /**
@@ -1272,11 +1308,11 @@
 
                                         // Toggle current element (group or group item) according to showElement boolean.
                                         if (!showElement) {
-                                            $(element).css('display', 'none');
+                                            
                                             $(element).addClass('multiselect-filter-hidden');
                                         }
                                         if (showElement) {
-                                            $(element).css('display', 'block');
+                                          
                                             $(element).removeClass('multiselect-filter-hidden');
                                         }
 
@@ -1953,7 +1989,23 @@
          * @returns {jQUery}
          */
         getSelected: function () {
-            return $('option', this.$select).filter(":selected");
+            var select = this.$select[0];
+            if (select.selectedOptions !== undefined) {
+                return $(select.selectedOptions);
+            }
+
+            // selectedIndex is the index of the first option selected or -1 if nothing is selected
+            if (select.selectedIndex == -1) { 
+                return [];
+            }
+
+            var selectedOptions = [];
+            for (var i = select.selectedIndex; i < select.length; i++) {
+                if (select.options[i].selected){
+                    selectedOptions.push(select.options[i]);
+                }
+            }
+            return $(selectedOptions);
         },
 
         /**
